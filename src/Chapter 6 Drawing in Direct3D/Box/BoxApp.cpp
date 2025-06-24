@@ -16,12 +16,15 @@ using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 
-struct Vertex
+struct VColorData 
 {
-    XMFLOAT3 Pos;
     XMFLOAT4 Color;
 };
 
+struct VPosData 
+{
+    XMFLOAT3 Pos;
+};
 struct ObjectConstants
 {
     XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
@@ -357,22 +360,34 @@ void BoxApp::BuildShadersAndInputLayout()
     mInputLayout =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
     };
 }
 
 void BoxApp::BuildBoxGeometry()
 {
-    std::array<Vertex, 8> vertices =
+    std::array<VPosData, 8> vertices_Pos =
     {
-        Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
-		Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
-		Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green) }),
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
-		Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
-		Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+        VPosData({ XMFLOAT3(-1.0f, -1.0f, -1.0f), }),
+		VPosData({ XMFLOAT3(-1.0f, +1.0f, -1.0f), }),
+		VPosData({ XMFLOAT3(+1.0f, +1.0f, -1.0f), }),
+		VPosData({ XMFLOAT3(+1.0f, -1.0f, -1.0f), }),
+		VPosData({ XMFLOAT3(-1.0f, -1.0f, +1.0f), }),
+		VPosData({ XMFLOAT3(-1.0f, +1.0f, +1.0f), }),
+		VPosData({ XMFLOAT3(+1.0f, +1.0f, +1.0f), }),
+		VPosData({ XMFLOAT3(+1.0f, -1.0f, +1.0f), })
+    };
+
+    std::array<VColorData, 8> vertices_Color =
+    {
+		VColorData({XMFLOAT4(Colors::White)   }),
+		VColorData({XMFLOAT4(Colors::Black)   }),
+		VColorData({XMFLOAT4(Colors::Red)     }),
+		VColorData({XMFLOAT4(Colors::Green)   }),
+		VColorData({XMFLOAT4(Colors::Blue)    }),
+		VColorData({XMFLOAT4(Colors::Yellow)  }),
+		VColorData({XMFLOAT4(Colors::Cyan)    }),
+		VColorData({XMFLOAT4(Colors::Magenta) }),
     };
 
 	std::array<std::uint16_t, 36> indices =
@@ -402,20 +417,27 @@ void BoxApp::BuildBoxGeometry()
 		4, 3, 7
 	};
 
-    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+    const UINT vbByteSize_Pos   = (UINT)vertices_Pos.size() * sizeof(VPosData);
+    const UINT vbByteSize_Color = (UINT)vertices_Color.size() * sizeof(VColorData);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
 	mBoxGeo = std::make_unique<MeshGeometry>();
 	mBoxGeo->Name = "boxGeo";
 
-	ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
-	CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+	ThrowIfFailed(D3DCreateBlob(vbByteSize_Pos, &mBoxGeo->VertexBufferCPU_Pos));
+	CopyMemory(mBoxGeo->VertexBufferCPU_Pos->GetBufferPointer(), vertices_Pos.data(), vbByteSize_Pos);
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize_Color, &mBoxGeo->VertexBufferCPU_Color));
+	CopyMemory(mBoxGeo->VertexBufferCPU_Color->GetBufferPointer(), vertices_Color.data(), vbByteSize_Color);
 
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
 	CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-	mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), vertices.data(), vbByteSize, mBoxGeo->VertexBufferUploader);
+	mBoxGeo->VertexBufferGPU_Color = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), vertices_Color.data(), vbByteSize_Color, mBoxGeo->VertexBufferUploader_Color);
+
+	mBoxGeo->VertexBufferGPU_Pos = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+		mCommandList.Get(), vertices_Pos.data(), vbByteSize_Pos, mBoxGeo->VertexBufferUploader_Pos);
 
 	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
 		mCommandList.Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
