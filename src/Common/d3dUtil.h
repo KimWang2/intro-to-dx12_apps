@@ -193,8 +193,8 @@ struct MeshGeometry
 	{
 		D3D12_VERTEX_BUFFER_VIEW vbv;
 		vbv.BufferLocation = VertexBufferGPU_Color->GetGPUVirtualAddress();
-		vbv.StrideInBytes = VertexByteStride;
-		vbv.SizeInBytes = VertexBufferByteSize;
+		vbv.StrideInBytes = VertexByteStride_Color;
+		vbv.SizeInBytes = VertexBufferByteSize_Color;
 
 		return vbv;
 	}
@@ -203,8 +203,8 @@ struct MeshGeometry
 	{
 		D3D12_VERTEX_BUFFER_VIEW vbv;
 		vbv.BufferLocation = VertexBufferGPU_Pos->GetGPUVirtualAddress();
-		vbv.StrideInBytes = VertexByteStride;
-		vbv.SizeInBytes = VertexBufferByteSize;
+		vbv.StrideInBytes = VertexByteStride_Pos;
+		vbv.SizeInBytes = VertexBufferByteSize_Pos;
 
 		return vbv;
 	}

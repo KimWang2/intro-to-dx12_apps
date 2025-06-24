@@ -204,7 +204,8 @@ void BoxApp::Draw(const GameTimer& gt)
 
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
-	mCommandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
+	mCommandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView_Pos());
+	mCommandList->IASetVertexBuffers(1, 1, &mBoxGeo->VertexBufferView_Color());
 	mCommandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
     mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     
@@ -442,8 +443,12 @@ void BoxApp::BuildBoxGeometry()
 	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
 		mCommandList.Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
 
-	mBoxGeo->VertexByteStride = sizeof(Vertex);
-	mBoxGeo->VertexBufferByteSize = vbByteSize;
+	mBoxGeo->VertexByteStride_Pos = sizeof(VPosData);
+	mBoxGeo->VertexBufferByteSize_Pos = vbByteSize_Pos;
+
+	mBoxGeo->VertexByteStride_Color = sizeof(VColorData);
+	mBoxGeo->VertexBufferByteSize_Color = vbByteSize_Color;
+
 	mBoxGeo->IndexFormat = DXGI_FORMAT_R16_UINT;
 	mBoxGeo->IndexBufferByteSize = ibByteSize;
 
