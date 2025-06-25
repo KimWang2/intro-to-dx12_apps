@@ -207,10 +207,11 @@ void BoxApp::Draw(const GameTimer& gt)
     
     mCommandList->SetGraphicsRootDescriptorTable(0, mCbvHeap->GetGPUDescriptorHandleForHeapStart());
 
-    mCommandList->DrawIndexedInstanced(
-		mBoxGeo->DrawArgs["box"].IndexCount, 
-		1, 0, 0, 0);
-	
+    mCommandList->DrawIndexedInstanced( mBoxGeo->DrawArgs["box"].IndexCount, 1, 0, 0, 0);
+
+    mCommandList->DrawIndexedInstanced( mBoxGeo->DrawArgs["pyramid"].IndexCount, 1, mBoxGeo->DrawArgs["pyramid"].StartIndexLocation, mBoxGeo->DrawArgs["pyramid"].BaseVertexLocation, 0);
+    
+
     // Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
 		D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
@@ -363,7 +364,7 @@ void BoxApp::BuildShadersAndInputLayout()
 
 void BoxApp::BuildBoxGeometry()
 {
-    std::array<Vertex, 8> vertices =
+    std::array<Vertex, 13> vertices =
     {
         Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White) }),
 		Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black) }),
@@ -372,10 +373,16 @@ void BoxApp::BuildBoxGeometry()
 		Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue) }),
 		Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow) }),
 		Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) })
+		Vertex({ XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta) }),
+
+		Vertex({ XMFLOAT3(2.0f, 1.0f, 0.0f)   , XMFLOAT4(Colors::Red)  }),    // 0 apex
+		Vertex({ XMFLOAT3(1.0f, -1.0f, -1.0f) , XMFLOAT4(Colors::Blue)}), // 1
+		Vertex({ XMFLOAT3(3.0f, -1.0f, -1.0f)  , XMFLOAT4(Colors::Blue)}),  // 2
+		Vertex({ XMFLOAT3(3.0f, -1.0f, 1.0f)   , XMFLOAT4(Colors::Blue)}),   // 3
+		Vertex({ XMFLOAT3(2.0f, -1.0f, 1.0f)  , XMFLOAT4(Colors::Blue)})   // 4
     };
 
-	std::array<std::uint16_t, 36> indices =
+	std::array<std::uint16_t, 54> indices =
 	{
 		// front face
 		0, 1, 2,
@@ -399,7 +406,14 @@ void BoxApp::BuildBoxGeometry()
 
 		// bottom face
 		4, 0, 3,
-		4, 3, 7
+		4, 3, 7,
+
+		0, 1, 2,
+		0, 2, 3,
+		0, 3, 4,
+		0, 4, 1,
+		1, 3, 2,
+		1, 4, 3
 	};
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
@@ -426,11 +440,19 @@ void BoxApp::BuildBoxGeometry()
 	mBoxGeo->IndexBufferByteSize = ibByteSize;
 
 	SubmeshGeometry submesh;
-	submesh.IndexCount = (UINT)indices.size();
+	submesh.IndexCount = 36;
 	submesh.StartIndexLocation = 0;
 	submesh.BaseVertexLocation = 0;
 
 	mBoxGeo->DrawArgs["box"] = submesh;
+
+    {
+		SubmeshGeometry submesh;
+		submesh.IndexCount = 18;
+		submesh.StartIndexLocation = 36;
+		submesh.BaseVertexLocation = 8;
+		mBoxGeo->DrawArgs["pyramid"] = submesh;
+    }
 }
 
 void BoxApp::BuildPSO()
