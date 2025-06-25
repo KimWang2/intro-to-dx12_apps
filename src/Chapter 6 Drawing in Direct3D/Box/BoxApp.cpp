@@ -59,6 +59,7 @@ private:
     ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
     std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
+    std::unique_ptr<UploadBuffer<float>>           mObjectCB_gTime = nullptr;
 
 	std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
 
@@ -170,6 +171,8 @@ void BoxApp::Update(const GameTimer& gt)
 	ObjectConstants objConstants;
     XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
     mObjectCB->CopyData(0, objConstants);
+
+    mObjectCB_gTime->CopyData(0, gt.TotalTime());
 }
 
 void BoxApp::Draw(const GameTimer& gt)
@@ -280,7 +283,7 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 void BoxApp::BuildDescriptorHeaps()
 {
     D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-    cbvHeapDesc.NumDescriptors = 1;
+    cbvHeapDesc.NumDescriptors = 2; // add one for g_time
     cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
     cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	cbvHeapDesc.NodeMask = 0;
@@ -303,9 +306,31 @@ void BoxApp::BuildConstantBuffers()
 	cbvDesc.BufferLocation = cbAddress;
 	cbvDesc.SizeInBytes = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
-	md3dDevice->CreateConstantBufferView(
-		&cbvDesc,
-		mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+    md3dDevice->CreateConstantBufferView(
+        &cbvDesc,
+        mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+
+    {
+        mObjectCB_gTime = std::make_unique<UploadBuffer<float>>(md3dDevice.Get(), 1, true);
+
+        UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(float));
+
+        D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mObjectCB_gTime->Resource()->GetGPUVirtualAddress();
+        // Offset to the ith object constant buffer in the buffer.
+        D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+        cbvDesc.BufferLocation = cbAddress;
+        cbvDesc.SizeInBytes = d3dUtil::CalcConstantBufferByteSize(sizeof(float));
+        
+        CD3DX12_CPU_DESCRIPTOR_HANDLE cbvHandle(mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+        
+        UINT descriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+        
+        cbvHandle.Offset(1, descriptorSize);
+
+        md3dDevice->CreateConstantBufferView(
+            &cbvDesc,
+            cbvHandle);
+    }
 }
 
 void BoxApp::BuildRootSignature()
@@ -321,7 +346,7 @@ void BoxApp::BuildRootSignature()
 
 	// Create a single descriptor table of CBVs.
 	CD3DX12_DESCRIPTOR_RANGE cbvTable;
-	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0);
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
 
 	// A root signature is an array of root parameters.
